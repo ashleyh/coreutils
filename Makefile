@@ -17,6 +17,7 @@ PROGS       := \
   pwd \
   rmdir \
   true \
+  uniq \
   wc \
   whoami \
   yes \
