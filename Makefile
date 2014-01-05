@@ -31,6 +31,7 @@ EXES        := \
 # Programs with usable tests
 TEST_PROGS  := \
   cat \
+  uniq \
 
 TEST        ?= $(TEST_PROGS)
 
