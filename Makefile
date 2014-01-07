@@ -8,6 +8,8 @@ RMFLAGS     :=
 
 # Possible programs
 PROGS       := \
+  base64 \
+  basename \
   cat \
   dirname \
   echo \
@@ -15,7 +17,10 @@ PROGS       := \
   false \
   printenv \
   pwd \
+  rm \
   rmdir \
+  sleep \
+  tee \
   true \
   uniq \
   wc \

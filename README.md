@@ -69,8 +69,6 @@ The steps above imply that, before starting to work on a utility, you should sea
 To do
 -----
 
-- base64
-- basename
 - chcon
 - chgrp
 - chmod
@@ -140,13 +138,11 @@ To do
 - realpath
 - relpath
 - remove
-- rm
 - runcon
 - seq
 - setuidgid
 - shred
 - shuf
-- sleep
 - sort
 - split
 - stat
@@ -157,7 +153,6 @@ To do
 - tac-pipe
 - tac
 - tail
-- tee
 - test
 - timeout
 - touch
