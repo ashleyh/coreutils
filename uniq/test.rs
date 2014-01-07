@@ -44,3 +44,13 @@ fn test_stdin_repeated() {
     let out = str::from_utf8_owned(prog.finish_with_output().output);
     assert_eq!(out, ~"b\n")
 }
+
+#[test]
+fn test_stdin_skip_char() {
+    let mut prog = run_prog([~"-s1"]);
+    // XXX: doesn't match GNU uniq if no newline at end of file
+    prog.input().write(bytes!("aa\nba\nab\nbb\n"));
+    prog.close_input();
+    let out = str::from_utf8_owned(prog.finish_with_output().output);
+    assert_eq!(out, ~"aa\nab\n")
+}

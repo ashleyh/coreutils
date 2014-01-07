@@ -16,6 +16,7 @@ use std::io::buffered::{BufferedReader, BufferedWriter};
 use std::iter::Peekable;
 use std::os;
 use extra::getopts::groups;
+use std::from_str::from_str;
 
 pub struct LineReader<R> {
     priv reader: R,
@@ -27,19 +28,31 @@ impl<R: Buffer> Iterator<~[u8]> for LineReader<R> {
     }
 }
 
-fn is_dup(a: &~[u8], b: &~[u8]) -> bool {
-    return a.eq(b);
+struct CompareOpts {
+    skip_chars: uint,
+}
+
+impl CompareOpts {
+    fn nub<'a>(&self, s: &'a [u8]) -> &'a [u8] {
+        s.slice_from(self.skip_chars)
+    }
+    fn compare(&self, a: &[u8], b: &[u8]) -> bool {
+        let a_nub = self.nub(a);
+        let b_nub = self.nub(b);
+        a_nub.eq(&b_nub)
+    }
 }
 
 struct Group<'a, R> {
-    first_line: ~[u8],
+    first_line: &'a [u8],
     p: &'a mut Peekable<~[u8], R>,
+    compare_opts: CompareOpts,
 }
 
 impl<'a, R: Buffer> Group<'a, LineReader<R>> {
     fn has_more(&self) -> bool {
         match self.p.peek() {
-            Some(next_line) if is_dup(&self.first_line, next_line) => true,
+            Some(next_line) => self.compare_opts.compare(self.first_line, *next_line),
             _ => false,
         }
     }
@@ -55,7 +68,7 @@ impl<'a, R: Buffer> Group<'a, LineReader<R>> {
     }
 }
 
-fn each_group<R: Buffer>(r: LineReader<R>, f: |&Group<LineReader<R>>|) {
+fn each_group<R: Buffer>(r: LineReader<R>, c: CompareOpts, f: |&Group<LineReader<R>>|) {
     let mut p = r.peekable();
     loop {
         let first_line = match p.next() {
@@ -65,6 +78,7 @@ fn each_group<R: Buffer>(r: LineReader<R>, f: |&Group<LineReader<R>>|) {
         let group = Group {
             first_line: first_line,
             p: &mut p,
+            compare_opts: c,
         };
         f(&group);
         group.each_line(|_| {});
@@ -78,6 +92,7 @@ fn main() {
         groups::optflag("u", "unique", "print only unique lines"),
         groups::optflag("c", "count", "print the number of lines in each group"),
         groups::optflag("d", "repeated", "print only repeated lines"),
+        groups::optopt("s", "skip-chars", "ignore first N chars when comparing lines", "N"),
     ];
 
     let matches = match groups::getopts(args.tail(), opts) {
@@ -91,32 +106,38 @@ fn main() {
         },
     };
 
+    let c = CompareOpts {
+        skip_chars: matches.opt_str("s")
+                           .and_then(|s| from_str::<uint>(s))
+                           .unwrap_or(0),
+    };
+
     let r = LineReader {
         reader: BufferedReader::new(stdin()),
     };
     let mut w = BufferedWriter::new(stdout());
 
     if matches.opt_present("d") {
-        each_group(r, |group| {
+        each_group(r, c, |group| {
             if group.has_more() {
                 w.write(group.first_line);
             }
         })
     } else if matches.opt_present("c") {
-        each_group(r, |group| {
+        each_group(r, c, |group| {
             let mut n = 1;
             group.each_line(|_| {n += 1;});
             write!(&mut w, "{:7d} ", n);
             w.write(group.first_line);
         })
     } else if matches.opt_present("u") {
-        each_group(r, |group| {
+        each_group(r, c, |group| {
             if !group.has_more() {
                 w.write(group.first_line);
             }
         })
     } else {
-        each_group(r, |group| {
+        each_group(r, c, |group| {
             w.write(group.first_line);
         });
     }
