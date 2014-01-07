@@ -9,10 +9,14 @@
  * file that was distributed with this source code.
  */
 
-use std::io::{stdin, stdout};
+extern mod extra;
+use std::io::{stdin, stdout, stderr};
 use std::io::{Writer, Buffer};
 use std::io::buffered::{BufferedReader, BufferedWriter};
 use std::iter::Peekable;
+use std::os;
+use extra::getopts::groups;
+use std::str;
 
 pub struct LineReader<R> {
     priv reader: R,
@@ -28,29 +32,94 @@ fn is_dup(a: &~[u8], b: &~[u8]) -> bool {
     return a.eq(b);
 }
 
-/// Advances `it` until `pred` would return `false` on the next element
-fn skip<A, T: Iterator<A>>(it: &mut Peekable<A, T>, pred: |&A| -> bool) {
+struct Group<'a, R> {
+    first_line: ~[u8],
+    p: &'a mut Peekable<~[u8], R>,
+}
+
+impl<'a, R: Buffer> Group<'a, LineReader<R>> {
+    fn has_more(&self) -> bool {
+        match self.p.peek() {
+            Some(next_line) if is_dup(&self.first_line, next_line) => true,
+            _ => false,
+        }
+    }
+
+    fn each_line(&self, f: |~[u8]|) {
+        loop {
+            if self.has_more() {
+                f(self.p.next().unwrap());
+            } else {
+                break;
+            }
+        }
+    }
+}
+
+fn each_group<R: Buffer>(r: LineReader<R>, f: |&Group<LineReader<R>>|) {
+    let mut p = r.peekable();
     loop {
-        match it.peek() {
-            Some(x) if pred(x) => {},
+        let first_line = match p.next() {
+            Some(first_line) => first_line,
             _ => break,
         };
-        it.next();
+        let group = Group {
+            first_line: first_line,
+            p: &mut p,
+        };
+        f(&group);
+        group.each_line(|_| {});
     }
 }
 
 fn main() {
-    let mut r = LineReader {
+    let args = os::args();
+    let program = args[0].clone();
+    let opts = ~[
+        groups::optflag("u", "unique", "print only unique lines"),
+        groups::optflag("c", "count", "print the number of lines in each group"),
+        groups::optflag("d", "repeated", "print only repeated lines"),
+    ];
+
+    let matches = match groups::getopts(args.tail(), opts) {
+        Ok(m) => m,
+        Err(f) => {
+            writeln!(&mut stderr(),
+                "{}: {}",
+                program, f.to_err_msg());
+            os::set_exit_status(1);
+            return;
+        },
+    };
+
+    let r = LineReader {
         reader: BufferedReader::new(stdin()),
-    }.peekable();
+    };
     let mut w = BufferedWriter::new(stdout());
-    loop {
-        let first_line = match r.next() {
-            Some(first_line) => first_line,
-            None => break,
-        };
-        w.write(first_line);
-        skip(&mut r, |next_line| is_dup(&first_line, next_line));
+
+    if matches.opt_present("d") {
+        each_group(r, |group| {
+            if group.has_more() {
+                w.write(group.first_line);
+            }
+        })
+    } else if matches.opt_present("c") {
+        each_group(r, |group| {
+            let mut n = 1;
+            group.each_line(|_| {n += 1;});
+            write!(&mut w, "{:7d} ", n);
+            w.write(group.first_line);
+        })
+    } else if matches.opt_present("u") {
+        each_group(r, |group| {
+            if !group.has_more() {
+                w.write(group.first_line);
+            }
+        })
+    } else {
+        each_group(r, |group| {
+            w.write(group.first_line);
+        });
     }
     w.flush();
 }
