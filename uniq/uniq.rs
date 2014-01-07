@@ -16,7 +16,6 @@ use std::io::buffered::{BufferedReader, BufferedWriter};
 use std::iter::Peekable;
 use std::os;
 use extra::getopts::groups;
-use std::str;
 
 pub struct LineReader<R> {
     priv reader: R,
