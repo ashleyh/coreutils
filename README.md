@@ -100,7 +100,7 @@ To do
 - head ( in progress )
 - hostid
 - hostname (in progress)
-- id
+- id (in progress)
 - install
 - join
 - kill
@@ -159,7 +159,6 @@ To do
 - tr
 - truncate
 - tsort
-- tty
 - uname-arch
 - uname-uname
 - uname
@@ -167,7 +166,6 @@ To do
 - uniq (in progress)
 - unlink
 - uptime
-- users
 - who
 
 License

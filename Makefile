@@ -23,9 +23,11 @@ PROGS       := \
   tee \
   true \
   uniq \
+  users \
   wc \
   whoami \
   yes \
+  tty \
 
 BUILD       ?= $(PROGS)
 
